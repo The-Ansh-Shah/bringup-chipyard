@@ -139,15 +139,21 @@ class SophiaLakeBML25C2CConfig extends Config(
 //==========================================================
 
 /** A single Rocket core implemented in the FPGA fabric, booting out of the
-  * on-board DDR. Programs and console I/O go over the FTDI USB-UART (T21/U21)
-  * with TSI, so the peripheral UART and the JTAG DTM are dropped and no
-  * serial-TL link is built. */
+  * on-board DDR. Programs load over the FTDI USB-UART (T21/U21) with TSI, and
+  * no serial-TL link is built. An FT-LINK on J7 carries JTAG and the UART at
+  * 0x1002_0000 (see `SophiaLakePins.ftLinkJ7`). A 4-pin GPIO block at
+  * 0x1001_0000 drives the spare LEDs and reads the push buttons (see
+  * `WithSophiaLakeGPIO`). */
 class RocketSophiaLakeConfig extends Config(
+  new WithSophiaLakeGPIO ++                                             // GPIO pins on the spare LEDs + buttons
+  new chipyard.iobinders.WithGPIOPunchthrough ++                        // raw GPIO pins at ChipTop, no IO cells
+  new chipyard.config.WithGPIO(address = 0x10010000, width = 4) ++
+  new WithSophiaLakeJTAG ++                                             // JTAG on the FT-LINK (J7)
+  new WithNoDebugClockGate ++
+  new WithSophiaLakeUART ++                                             // UART on the FT-LINK (J7)
   new WithSophiaLakeUARTTSI ++                                          // TSI over the FTDI UART pins
   new testchipip.tsi.WithUARTTSIClient(initBaudRate = BigInt(921600)) ++
   new testchipip.serdes.WithNoSerialTL ++                               // no testchip to talk to
-  new chipyard.config.WithNoUART ++                                     // the UART pins carry UART-TSI
-  new chipyard.config.WithNoDebug ++                                    // no JTAG pins on this board
   new WithSophiaLakeTweaks(freqMHz = 50) ++
   new chipyard.RocketConfig)
 
@@ -159,6 +165,13 @@ class RocketSophiaLakeConfig extends Config(
 /** Don't use FPGAShell's DesignKey. */
 class WithNoDesignKey extends Config((site, here, up) => {
   case DesignKey => (p: Parameters) => new SimpleLazyRawModule()(p)
+})
+
+/** Clock the debug module straight off its bus clock. Its dmactive clock gate
+  * becomes a LUT feeding a second BUFG on an FPGA, and the skew between the
+  * gated and ungated clocks breaks hold timing into the debug module. */
+class WithNoDebugClockGate extends Config((site, here, up) => {
+  case DebugModuleKey => up(DebugModuleKey).map(_.copy(clockGate = false))
 })
 
 /** Disable the UART-TSI bringup client. */

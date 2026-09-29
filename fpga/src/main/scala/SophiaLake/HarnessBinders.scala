@@ -43,6 +43,16 @@ case class CreditedC2CPins(
   inValid:   String,
   inPhit:    String)
 
+/** Package pins for an FT-LINK debugger (JTAG + UART), named from the FPGA's
+  * side: the FPGA drives `tdo` and `uartTx`. */
+case class FTLinkPins(
+  tck:    String,
+  tms:    String,
+  tdi:    String,
+  tdo:    String,
+  uartRx: String,
+  uartTx: String)
+
 object SophiaLakePins {
   val dsp25ChipLink = DecoupledSerialTLPins(
     clock    = "A21",
@@ -67,6 +77,18 @@ object SophiaLakePins {
   val bml25C2C = CreditedC2CPins(
     clockOut = "AB15", resetOut = "AA15", outValid = "AB13", outPhit = "AA13",
     clockIn  = "AB17", resetIn  = "AB16", inValid  = "AA16", inPhit  = "Y16")
+
+  /** An FT-LINK plugged into J7, the same PMOD the C2C configs use. J7 numbers
+    * its pins from the power end (3V3 on 1-2, GND on 3-4) and the FT-LINK's H2
+    * from the signal end, so with power lined up H2-1 (TDO) lands on J7-12.
+    * nSRST (J7-7) and nTRST (J7-10) are left unconnected. */
+  val ftLinkJ7 = FTLinkPins(
+    tck    = "AA13",  // J7-8,  PM_02_P <- H2-5
+    tms    = "AB17",  // J7-9,  PM_01_N <- H2-4
+    tdi    = "AB16",  // J7-11, PM_01_P <- H2-2
+    tdo    = "AA15",  // J7-12, PM_03_P -> H2-1
+    uartRx = "AA16",  // J7-5,  PM_00_N <- H2-8 (FT-LINK TXD)
+    uartTx = "AB13")  // J7-6,  PM_02_N -> H2-7 (FT-LINK RXD)
 
   /** Constrain each (package pin, IO) pair to `ioStandard`. */
   def addPins(
@@ -232,6 +254,46 @@ class WithSophiaLakeUARTTSI extends HarnessBinder({
   }
 })
 
+/** JTAG on an FT-LINK. PMOD pins aren't clock-capable, so TCK is routed over
+  * the general fabric. */
+class WithSophiaLakeJTAG(pins: FTLinkPins = SophiaLakePins.ftLinkJ7) extends HarnessBinder({
+  case (th: HasHarnessInstantiators, port: JTAGPort, chipId: Int) => {
+    val ath = SophiaLakePins.harness(th)
+    val harnessIO = IO(new JTAGChipIO(false)).suggestName("jtag")
+    harnessIO.TDO := port.io.TDO
+    port.io.TCK := harnessIO.TCK
+    port.io.TDI := harnessIO.TDI
+    port.io.TMS := harnessIO.TMS
+    port.io.reset.foreach(_ := th.referenceReset)
+
+    SophiaLakePins.addPins(ath, Seq(
+      (pins.tck, IOPin(harnessIO.TCK)),
+      (pins.tms, IOPin(harnessIO.TMS)),
+      (pins.tdi, IOPin(harnessIO.TDI)),
+      (pins.tdo, IOPin(harnessIO.TDO))
+    ), "LVCMOS33", iob = false, pullup = true)
+
+    ath.sdc.addClock("JTCK", IOPin(harnessIO.TCK), 10)
+    ath.sdc.addGroup(clocks = Seq("JTCK"))
+    ath.xdc.clockDedicatedRouteFalse(IOPin(harnessIO.TCK))
+  }
+})
+
+/** The SoC's UART on an FT-LINK; the on-board FTDI UART carries UART-TSI. The
+  * pull-ups hold rxd idle when no FT-LINK is plugged in. */
+class WithSophiaLakeUART(pins: FTLinkPins = SophiaLakePins.ftLinkJ7) extends HarnessBinder({
+  case (th: HasHarnessInstantiators, port: UARTPort, chipId: Int) => {
+    val ath = SophiaLakePins.harness(th)
+    val harnessIO = IO(chiselTypeOf(port.io)).suggestName("uart")
+    harnessIO <> port.io
+
+    SophiaLakePins.addPins(ath, Seq(
+      (pins.uartRx, IOPin(harnessIO.rxd)),
+      (pins.uartTx, IOPin(harnessIO.txd))
+    ), "LVCMOS33", pullup = true)
+  }
+})
+
 
 //==========================================================
 // Peripheral binders
@@ -245,5 +307,45 @@ class WithSophiaLakeTDDRTL extends HarnessBinder({
     val ddrClientBundle = Wire(new HeterogeneousBag(bundles.map(_.cloneType)))
     bundles.zip(ddrClientBundle).foreach { case (bundle, io) => bundle <> io }
     ddrClientBundle <> port.io
+  }
+})
+
+/** The SoC's 4-pin GPIO block on the board's spare LEDs and push buttons.
+  * LEDs 0-1 (bi-color LED20) stay the harness's status LEDs, so the pins map
+  * onto bi-color LED21 and the two buttons:
+  *   pin 0 -> LED 2, LED21 green (P19)
+  *   pin 1 -> LED 3, LED21 red   (U20)
+  *   pin 2 <- button 0, SW8      (Y19)
+  *   pin 3 <- button 1, SW9      (Y21)
+  * The LEDs are common-anode on 3V3, so they light when their pin is driven
+  * low; the binder inverts, so a GPIO 1 means lit. The buttons switch to 3V3
+  * over a 10k pull-down, so pressed reads 1 and no internal pull is needed.
+  *
+  * The pins behave like real pads: an LED lights only while its output_en
+  * bit is set, and input_val follows a pin only while its input_en bit is
+  * set (an LED pin reads back the level it drives). */
+class WithSophiaLakeGPIO extends HarnessBinder({
+  case (th: HasHarnessInstantiators, port: GPIOPinsPort, chipId: Int) => {
+    val ath = SophiaLakePins.harness(th)
+    val pins = port.io.pins
+    require(port.gpioId == 0 && pins.size == 4,
+      s"WithSophiaLakeGPIO maps a single 4-pin GPIO block, got gpio_${port.gpioId} with ${pins.size} pins")
+
+    val buttons = IO(Input(UInt(2.W))).suggestName("gpio_button")
+    SophiaLakePins.addPins(ath, Seq(
+      ("Y19", IOPin(buttons, 0)),
+      ("Y21", IOPin(buttons, 1))
+    ), "LVCMOS33", iob = false)
+
+    val leds = ath.all_leds.drop(2).map(_.getWrappedValue)
+    leds.zip(pins.take(2)).foreach { case (led, pin) =>
+      val level = pin.o.oval && pin.o.oe
+      led := !level                                                     // active-low LED
+      pin.i.ival := level && pin.o.ie
+    }
+    buttons.asBools.zip(pins.drop(2)).foreach { case (button, pin) =>
+      pin.i.ival := button && pin.o.ie
+    }
+    pins.foreach(_.i.po.foreach(_ := DontCare))
   }
 })
