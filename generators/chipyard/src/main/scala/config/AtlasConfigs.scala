@@ -6,7 +6,7 @@ import atlas.config._
 import freechips.rocketchip.resources.BigIntHexContext
 import freechips.rocketchip.subsystem._
 import freechips.rocketchip.diplomacy.RegionType
-import org.chipsalliance.cde.config.Config
+import org.chipsalliance.cde.config.{Config, Parameters}
 import testchipip.soc.{OBUS, WithMbusScratchpad}
 
 class EE290SimConfig extends Config(
@@ -80,7 +80,8 @@ class WithEE290TapeoutPeripherals extends Config(
 )
 
 
-class EE290BringupHostConfig extends Config(
+// Keep the bringup link and buses at one frequency; existing callers default to 500 MHz.
+class EE290BringupHostConfig(freqMHz: Int = 500, tsiToChip: Boolean = false) extends Config(
   //=============================
   // Set up TestHarness for standalone-sim
   //=============================
@@ -101,20 +102,32 @@ class EE290BringupHostConfig extends Config(
   //=============================
   new testchipip.serdes.WithSerialTL(Seq(testchipip.serdes.SerialTLParams(
     manager = Some(testchipip.serdes.SerialTLManagerParams(
-      memParams = Seq(testchipip.serdes.ManagerRAMParams(                            // Bringup platform can access all memory from 0 to DRAM_BASE
+      memParams = Seq(testchipip.serdes.ManagerRAMParams(                            // Tethered TSI must also reach cached chip memory
         address = BigInt("00000000", 16),
-        size    = BigInt("40000000", 16)
+        size    = if (tsiToChip) BigInt("1000000000", 16) else BigInt("40000000", 16)
       ))
     )),
     client = Some(testchipip.serdes.SerialTLClientParams()),                                        // Allow chip to access this device's memory (DRAM)
-    phyParams = testchipip.serdes.DecoupledInternalSyncSerialPhyParams(phitWidth=32, flitWidth=32, freqMHz = 500) // bringup platform provides the clock
+    phyParams = testchipip.serdes.DecoupledInternalSyncSerialPhyParams(phitWidth=32, flitWidth=32, freqMHz = freqMHz) // bringup platform provides the clock
   ))) ++
 
   //============================
   // Setup bus topology on the bringup system
   //============================
-  new testchipip.soc.WithOffchipBusClient(SBUS,                                // offchip bus hangs off the SBUS
-    blockRange = AddressSet.misaligned(0x80000000L, (BigInt(1) << 30) * 4)) ++ // offchip bus should not see the main memory of the testchip, since that can be accessed directly
+  // In tethered mode UART-TSI alone masters OBUS, so all HTIF accesses enter
+  // the chip's coherent FBUS. Chip memory traffic returns through the host FBUS
+  // to local DRAM, without a path back to OBUS.
+  (if (tsiToChip) new Config((site, here, up) => {
+    case testchipip.tsi.UARTTSIClientKey => up(testchipip.tsi.UARTTSIClientKey).map(_.copy(tlbus = OBUS))
+    case TLNetworkTopologyLocated(InSubsystem) => up(TLNetworkTopologyLocated(InSubsystem)) :+
+      new freechips.rocketchip.tilelink.TLBusWrapperTopology(Nil, Nil) {
+        override def connect(context: HasTileLinkLocations)(implicit p: Parameters): Unit = {
+          // Preserve the OBUS clock connection without an SBUS TileLink path.
+          context.locateTLBusWrapper(OBUS).clockGroupNode := context.locateTLBusWrapper(SBUS).clockGroupNode
+        }
+      }
+  }) else new testchipip.soc.WithOffchipBusClient(SBUS,                                // offchip bus hangs off the SBUS
+    blockRange = AddressSet.misaligned(0x80000000L, (BigInt(1) << 30) * 4))) ++ // offchip bus should not see the main memory of the testchip, since that can be accessed directly
   new testchipip.soc.WithOffchipBus ++                                         // offchip bus
 
   //=============================
@@ -131,17 +144,20 @@ class EE290BringupHostConfig extends Config(
   // Set up clocks of the bringup system
   //=============================
   new chipyard.clocking.WithPassthroughClockGenerator ++ // pass all the clocks through, since this isn't a chip
-  new chipyard.config.WithUniformBusFrequencies(500.0) ++   // run all buses of this system at 75 MHz
+  new chipyard.harness.WithHarnessBinderClockFreqMHz(freqMHz) ++
+  new chipyard.config.WithUniformBusFrequencies(freqMHz) ++ // match the bus clocks to the SerialTL clock
 
   // Base is the no-cores config
   new chipyard.NoCoresConfig)
 
 
 class TetheredEE290Config extends Config(
+  // The simulated UART adapter and the host UART must use the same clock rate.
+  new chipyard.harness.WithHarnessBinderClockFreqMHz(500.0) ++
   new chipyard.harness.WithAbsoluteFreqHarnessClockInstantiator ++   // use absolute freqs for sims in the harness
   new chipyard.harness.WithMultiChipSerialTL(0, 1) ++                // connect the serial-tl ports of the chips together
   new chipyard.harness.WithMultiChip(0, new EE290SimPeripheralConfig) ++ // ChipTop0 is the design-to-be-taped-out
-  new chipyard.harness.WithMultiChip(1, new EE290BringupHostConfig))  // ChipTop1 is the bringup design
+  new chipyard.harness.WithMultiChip(1, new EE290BringupHostConfig(tsiToChip = true)))  // ChipTop1 is the bringup design
 
 class EE290BaseConfig extends Config(
   new chipyard.config.WithSystemBusWidth(bitWidth = 256) ++
