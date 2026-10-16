@@ -186,7 +186,7 @@ conda environment or \`source env.sh\` and skip this step with \`-s 1\`." >&2
         exit_if_last_command_failed
     fi
     SYS_GLIBC=$(ldd --version | awk '/ldd/{print $NF}')
-    DEFAULT_GLIBC=$(grep -i "sysroot_linux-64=" conda-reqs/chipyard-base.yaml | awk -F= '{print $2}')
+    DEFAULT_GLIBC=$(grep -i "sysroot_linux-64=" conda-reqs/chipyard-base.yaml | awk -F= '{split($2, parts, /[[:space:]#]/); print parts[1]}')
     if [ "$SYS_GLIBC" != "$DEFAULT_GLIBC" ]; then
         # replace the glibc version
         sed -i.bak "s/^\([[:space:]]*-\s*sysroot_linux-64=\).*/\1$SYS_GLIBC/" conda-reqs/chipyard-base.yaml
