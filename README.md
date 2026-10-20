@@ -12,3 +12,6 @@ If you are looking for the Chipyard README, that is [here](./README-CHIPYARD.md)
 
 The `tethered-sims` branch includes [combined RTL simulation instructions](./docs/Simulation/Tethered-EE290.md)
 and [VCU118 bitstream build instructions and results](./docs/Prototyping/Tethered-EE290-VCU118.md).
+
+The [prebuilt VCU118 bitstream](./fpga/bitstreams/TetheredEE290VCU118Config.bit)
+and [SHA-256 checksum](./fpga/bitstreams/SHA256SUMS) are also available.

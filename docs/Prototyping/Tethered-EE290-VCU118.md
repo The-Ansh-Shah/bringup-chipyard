@@ -116,9 +116,11 @@ review before hardware qualification.
 
 The reference `.bit` is approximately 63 MiB. Its verified SHA-256 is
 `2ea6278778a761935678af69d8b248e664bf75d157172854d67760fdb52d75ad`.
-This identifies the local reference artifact; byte-identical output from
-another tool installation is not required. Generated artifacts are ignored
-by Git and are not included in the fork.
+The [prebuilt reference bitstream](../../fpga/bitstreams/TetheredEE290VCU118Config.bit)
+and [SHA-256 checksum](../../fpga/bitstreams/SHA256SUMS) are published in the
+fork. This hash identifies that artifact; byte-identical output from another
+tool installation is not required. Generated working directories remain
+ignored by Git; the published reference copy is tracked explicitly.
 
 Progress, result, source hashes, and logs are saved locally under
 `fpga/output/tethered-vcu118/`. Inspect `stage`, `result`, `elaboration.log`,
