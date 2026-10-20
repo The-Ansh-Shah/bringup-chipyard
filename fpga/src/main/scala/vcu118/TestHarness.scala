@@ -96,6 +96,7 @@ class VCU118FPGATestHarness(override implicit val p: Parameters) extends VCU118S
 
 class VCU118FPGATestHarnessImp(_outer: VCU118FPGATestHarness) extends LazyRawModuleImp(_outer) with HasHarnessInstantiators {
   override def provideImplicitClockToLazyChildren = true
+  override val supportsMultiChip: Boolean = true
   val vcu118Outer = _outer
 
   val reset = IO(Input(Bool())).suggestName("reset")
