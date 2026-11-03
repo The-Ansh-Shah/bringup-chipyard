@@ -97,3 +97,17 @@ class AllClocksFromHarnessClockInstantiator extends HarnessClockInstantiator {
 class WithAllClocksFromHarnessClockInstantiator extends Config((site, here, up) => {
   case HarnessClockInstantiatorKey => () => new AllClocksFromHarnessClockInstantiator
 })
+
+class SomeClocksFromHarnessClockInstantiator extends HarnessClockInstantiator {
+  def instantiateHarnessClocks(refClock: Clock, refClockFreqMHz: Double): Unit = {
+    for ((name, (freq, clock)) <- clockMap) {
+      val mhz = freq / 1000000
+      require(mhz == refClockFreqMHz || mhz == 25.175 || mhz == 125.875,
+        s"BoraLake has no source for $name at $mhz MHz")
+      if (mhz == refClockFreqMHz) clock := refClock
+    }
+  }
+}
+class WithSomeClocksFromHarnessClockInstantiator extends Config((site, here, up) => {
+  case HarnessClockInstantiatorKey => () => new SomeClocksFromHarnessClockInstantiator
+})

@@ -7,6 +7,12 @@ import freechips.rocketchip.subsystem.{InCluster}
 // --------------
 // Rocket Configs
 // --------------
+class RocketHDMIConfig extends Config(
+  new chipyard.iobinders.WithHDMIPunchthrough ++
+  new barduino_blocks.WithVideoScanout ++
+  new freechips.rocketchip.subsystem.WithExtMemSize((BigInt(4)<<30)) ++
+  new freechips.rocketchip.rocket.WithNHugeCores(1) ++         // single rocket-core
+  new chipyard.config.AbstractConfig)
 
 class RocketConfig extends Config(
   new freechips.rocketchip.rocket.WithNHugeCores(1) ++         // single rocket-core

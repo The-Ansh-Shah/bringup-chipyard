@@ -114,6 +114,20 @@ ifeq ($(SUB_PROJECT),sophialake)
 	FPGA_BRAND        ?= xilinx
 endif
 
+ifeq ($(SUB_PROJECT),boralakeold)
+ SBT_PROJECT ?= chipyard_fpga
+ MODEL ?= BoraLakeHarness
+ VLOG_MODEL ?= BoraLakeHarness
+ MODEL_PACKAGE ?= chipyard.fpga.boralakeold
+ CONFIG ?= BoraLakeRocketConfig
+ CONFIG_PACKAGE ?= chipyard.fpga.boralakeold
+ GENERATOR_PACKAGE ?= chipyard
+ TB ?= none
+ TOP ?= ChipTop
+ BOARD ?= boralake
+ FPGA_BRAND ?= xilinx
+endif
+
 export USE_CHISEL6=1
 
 include $(base_dir)/variables.mk
@@ -129,6 +143,9 @@ default: $(mcs)
 #########################################################################################
 fpga_dir := $(base_dir)/fpga/fpga-shells/$(FPGA_BRAND)
 fpga_common_script_dir := $(fpga_dir)/common/tcl
+ifeq ($(SUB_PROJECT),boralakeold)
+fpga_common_script_dir := $(base_dir)/fpga/hdmi-shell/tcl
+endif
 
 #########################################################################################
 # setup misc. sim files
@@ -166,6 +183,7 @@ $(synth_list_f): $(sim_common_files) $(all_vsrcs)
 
 ifeq ($(FPGA_BRAND),xilinx)
 BIT_FILE := $(build_dir)/obj/$(MODEL).bit
+$(BIT_FILE): $(wildcard $(base_dir)/fpga/hdmi-shell/tcl/*.tcl)
 $(BIT_FILE): $(synth_list_f)
 	cd $(build_dir); vivado \
 		-nojournal -mode batch \

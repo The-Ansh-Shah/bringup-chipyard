@@ -584,6 +584,13 @@ class WithTLMemPunchthrough extends OverrideIOBinder({
   }
 })
 
+class WithHDMIPunchthrough extends OverrideIOBinder({
+  (system: barduino_blocks.CanHaveVideoScanout) => system.hdmi_out.map({ p =>
+    val hdmi_out = IO(new barduino_blocks.HDMIVideoIO)
+    hdmi_out <> p
+    (Seq(HDMIOutPort(() => hdmi_out)), Nil)
+  }).getOrElse((Nil, Nil))
+})
 
 class WithDontTouchPorts extends OverrideIOBinder({
   (system: DontTouch) => system.dontTouchPorts(); (Nil, Nil)

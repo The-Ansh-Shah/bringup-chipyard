@@ -118,3 +118,5 @@ case class OffchipSelPort  (val getIO: () => UInt)
 
 case class CTCPort (val getIO: () => Data, val portId: Int) 
     extends Port[Data]
+
+case class HDMIOutPort(val getIO: () => barduino_blocks.HDMIVideoIO) extends Port[barduino_blocks.HDMIVideoIO]

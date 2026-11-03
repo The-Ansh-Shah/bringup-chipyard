@@ -177,7 +177,7 @@ lazy val chipyard = {
   // Use explicit Project(...) so the project id remains 'chipyard'
   val baseProjects: Seq[ProjectReference] =
     Seq(
-      testchipip, rocketchip, boom, rocketchip_blocks, rocketchip_inclusive_cache,
+      barduino_blocks, testchipip, rocketchip, boom, rocketchip_blocks, rocketchip_inclusive_cache,
       icenet, tracegen,
       constellation, barf, shuttle, rerocc,
     ).map(sbt.Project.projectToRef) ++
@@ -474,12 +474,19 @@ lazy val rocketchip_inclusive_cache = withInitCheck((project in file("generators
   .settings(libraryDependencies ++= rocketLibDeps.value)
 
 lazy val fpga_shells = (project in file("./fpga/fpga-shells"))
+  .settings(Compile / unmanagedSources := {
+    val originals = (Compile / unmanagedSources).value
+    val overrides = baseDirectory.value.getParentFile / "hdmi-shell" / "src" / "main" / "scala"
+    originals.filterNot(f => Set("BoraLakeShell.scala", "BoraLakeDDRShell.scala").contains(f.getName)) ++
+      (overrides ** "*.scala").get
+  })
   .dependsOn(rocketchip, rocketchip_blocks)
   .settings(libraryDependencies ++= rocketLibDeps.value)
   .settings(commonSettings)
 
 lazy val chipyard_fpga = (project in file("./fpga"))
   .dependsOn(chipyard, fpga_shells)
+  .settings(chiselSettings)
   .settings(commonSettings)
 
 // Components of FireSim
@@ -568,3 +575,9 @@ lazy val firechip = (project in file("generators/firechip/chip"))
     Test / testOptions += Tests.Argument("-oF")
   )
   .settings(scalaTestSettings)
+
+lazy val barduino_blocks = (project in file("generators/barduino-blocks"))
+  .dependsOn(rocketchip)
+  .settings(libraryDependencies ++= rocketLibDeps.value)
+  .settings(chiselSettings)
+  .settings(commonSettings)

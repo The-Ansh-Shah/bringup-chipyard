@@ -1,0 +1,3 @@
+# Local logs, input snapshots, checkpoints, and exported patches are generated.
+*
+!.gitignore
