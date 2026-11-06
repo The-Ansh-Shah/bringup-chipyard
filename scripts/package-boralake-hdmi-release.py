@@ -16,7 +16,7 @@ if sha(obj/'BoraLakeHarness.bit')!='10a558803ea24182196cb8fc68c08df3785c9560ac33
     raise SystemExit('Unexpected bitstream; review implementation before packaging')
 for name in ['donut','plasma','tunnel','animated-demo','flip-stress-8','flip-stress','pageflip','hold-bars']:
     shutil.copy2(root/'software/hdmi-test/build'/f'hdmi-{name}.elf',out/f'hdmi-{name}.elf')
-for f in [obj/'BoraLakeHarness.bit',root/'scripts/program-boralake-hdmi.tcl',root/'software/hdmi-test/read-flip-stats.py',root/'hdmi-validation/integration.patch',root/'hdmi-validation/patch-validation.txt']:
+for f in [obj/'BoraLakeHarness.bit',root/'scripts/program-boralake-hdmi.tcl',root/'software/hdmi-test/read-flip-stats.py',root/'software/hdmi-test/read-hdmi-status.py',root/'software/hdmi-test/VALIDATION.md',root/'hdmi-validation/integration.patch',root/'hdmi-validation/patch-validation.txt']:
     shutil.copy2(f,out/f.name)
 shutil.copy2(root/'software/hdmi-test/RELEASE.md',out/'README.md')
 for name in ['donut','plasma','tunnel','animated']:

@@ -44,6 +44,8 @@ Programs/stack reside in the first 2 MiB starting at 0x80000000; framebuffers ar
 
 ## Measure
 
+See [VALIDATION.md](VALIDATION.md) for exact FPS/status commands, interpretation, compatibility restrictions and a reproducible comparison plan. `read-hdmi-status.py` samples original or latest registers safely.
+
 Stop the existing UART-TSI host first, keeping the CPU running. Use the exact ELF that is currently running:
 
 ```sh
