@@ -16,7 +16,9 @@ module tb;
  logic [63:0] wdata=0, rdata;
  logic [2:0] opcode=0;
  logic dmaAV,dmaDR,dmaDV;
+ assign dmaDR=1;
  logic [31:0] dmaAddr;
+ logic [2:0] dmaSource,capturedSource;
  logic [63:0] dmaData;
  logic pending=0, stall=0;
  logic [31:0] captured;
@@ -43,7 +45,7 @@ module tb;
     if(dmaAddr[5:0]!=0) $fatal(1,"unaligned DMA");
     if(!((dmaAddr>=32'h81000000 && dmaAddr<32'h81096000)||(dmaAddr>=32'h81100000 && dmaAddr<32'h81196000)))
      $fatal(1,"DMA outside framebuffer: %h",dmaAddr);
-    pending<=1; captured<=dmaAddr; beat<=0; requests<=requests+1;
+    pending<=1; captured<=dmaAddr;capturedSource<=dmaSource; beat<=0; requests<=requests+1;
    end
    if(dmaDV && dmaDR) begin
     if(beat==7) pending<=0;
@@ -54,10 +56,11 @@ module tb;
  ClockSinkDomain_2 dut(
   .auto_clock_in_clock(clk),.auto_clock_in_reset(reset),.io_pxclk(px),.io_pxclkx5(fast),.io_videoReset(videoReset),
   .auto_dma_out_a_ready(!pending),.auto_dma_out_a_valid(dmaAV),.auto_dma_out_a_bits_address(dmaAddr),
-  .auto_dma_out_d_ready(dmaDR),.auto_dma_out_d_valid(dmaDV),.auto_dma_out_d_bits_denied(1'b0),
+  .auto_dma_out_d_valid(dmaDV),.auto_dma_out_d_bits_denied(1'b0),
+  .auto_dma_out_a_bits_source(dmaSource),.auto_dma_out_d_bits_source(capturedSource),
   .auto_dma_out_d_bits_data(dmaData),.auto_dma_out_d_bits_corrupt(1'b0),
   .auto_in_a_ready(ar),.auto_in_a_valid(av),.auto_in_a_bits_opcode(opcode),.auto_in_a_bits_size(2'd3),
-  .auto_in_a_bits_source(8'd0),.auto_in_a_bits_address(addr),.auto_in_a_bits_mask(8'hff),.auto_in_a_bits_data(wdata),
+  .auto_in_a_bits_source('0),.auto_in_a_bits_address(addr),.auto_in_a_bits_mask(8'hff),.auto_in_a_bits_data(wdata),
   .auto_in_d_ready(dr),.auto_in_d_valid(dv),.auto_in_d_bits_data(rdata),
   .auto_in_d_bits_opcode(),.auto_in_d_bits_size(),.auto_in_d_bits_source(),
   .io_hdmiOut_TMDS_CLK_P(),.io_hdmiOut_TMDS_CLK_N(),.io_hdmiOut_TMDS_DATA_P(),.io_hdmiOut_TMDS_DATA_N());
@@ -70,7 +73,7 @@ module tb;
  always @(posedge px) begin : pixels
   logic [15:0] expected;
   logic [23:0] rgb;
-  if(checking && dut.tx.vde && !dut.tx.rst) begin
+  if(checking && dut.tx.vde && !dut.tx.rst && dut.running) begin
    expected=color(pattern,integer'(dut.h)-144);
    rgb={{expected[4:0],expected[4:2]},{expected[10:5],expected[10:9]},{expected[15:11],expected[15:13]}};
    if({dut.tx.red,dut.tx.green,dut.tx.blue} !== rgb)

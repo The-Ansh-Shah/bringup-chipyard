@@ -1,0 +1,6 @@
+version,name,flips,completed_frames,tx_resets,missing_pixels,repeated_frames,min_frame_pixel_cycles,max_frame_pixel_cycles,acknowledged_updates_per_second,frame_rate_hz,reordered_bursts
+previous-stop-start,ideal,8,9,8,0,0,412016,412017,61.11110286596231,61.110996055401806,0
+pageflip-bram,ideal,8,9,0,0,0,420000,420000,59.94945062323449,59.94945062323449,0
+pageflip-bram,latency600,8,9,0,0,0,420000,420000,59.94945062323449,59.94945062323449,0
+pageflip-bram,reordered,8,9,0,0,0,420000,420000,59.94945062323449,59.94945062323449,17284
+pageflip-bram,late-submission,8,17,0,0,8,420000,420000,29.974725311617245,59.94945062323449,0

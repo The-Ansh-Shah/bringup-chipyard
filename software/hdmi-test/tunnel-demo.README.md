@@ -1,0 +1,11 @@
+# Neon tunnel stress demo
+
+`hdmi-tunnel.elf` renders an animated perspective tunnel: neon grid rings stream toward the camera, angular panels rotate, a depth-darkened center disappears into the distance, and a rainbow palette flows around the walls. The display includes a frame counter and an eight-DMA-slots label.
+
+The renderer uses integer-only polar/depth lookup tables prepared once at startup. Every frame evaluates a 160x120 texture and expands each sample to a 4x4 block using aligned 64-bit stores. It writes the entire 640x480 framebuffer every update (614400 bytes, approximately 36.8 MB/s at 59.95 updates/s, in addition to scanout reads). There is no floating-point, allocator, console, or external asset. This is a rendering/cache/coherence bandwidth stress test; it aims for one image per refresh, but actual Rocket rendering FPS must be measured on the board.
+
+It uses framebuffer addresses 0x81000000 and 0x81100000, sets the outstanding-read limit at +0x18 to eight while scanout is stopped, enables scanout once, then paints only the inactive buffer. A memory fence precedes submission. It waits for the page-flip acknowledgement before touching the old front buffer. The bitstream must support the new page-flip API; rc1 does not. No physical board was programmed or tested during creation.
+
+Run with the same UART-TSI command as the other demos, selecting `hdmi-tunnel.elf`. Read cadence with `read-flip-stats.py --elf /path/to/hdmi-tunnel.elf --chipyard "$CHIPYARD" --tty "$UART_TSI_DEVICE"` after stopping the original UART host. The standard shared counters expose acknowledged FPS, render-cycle cost, max presentation interval, and sticky underflow. `hdmi_slow_present_intervals` counts intervals longer than 25 ms, not exact dropped frames. HDL refresh stays approximately 59.95 Hz even if the software renders more slowly.
+
+Native validation: `python tests/hdmi/pageflip/test_tunnel.py`. It runs 32 actual firmware frames with mocked MMIO/flip acknowledgement; verifies the active buffer is untouched, all gap canaries remain intact, animation changes substantially, rendering is deterministic and every unobscured output pixel matches a scalar reference. UBSan is enabled. This validates software logic, not HDMI signaling or hardware FPS.

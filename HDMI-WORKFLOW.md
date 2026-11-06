@@ -1,6 +1,6 @@
 # BoraLake Rocket + HDMI workflow
 
-Worktree `/bwrcq/C/ansh_shah/ee194-lab1-hdmi`, branch `hdmi/boralake-integration`, base `064255862d8029809c57224ecf747c5f62ad6ead`. Changes are uncommitted. Physical HDMI has not been observed and no connected board has been programmed.
+Worktree `/bwrcq/C/ansh_shah/ee194-lab1-hdmi`, branch `hdmi/boralake-integration`, base `064255862d8029809c57224ecf747c5f62ad6ead`. Initial integration was published at c11c05a3 and merged with upstream at 748fb863. The subsequent profiling/pipelined-DMA development changes are uncommitted. Full physical HDMI validation is still pending. The user reported intermittent blue/black output on the previous release; the agent has not programmed a connected board.
 
 ## Target and source isolation
 
@@ -117,13 +117,13 @@ The host loads the ELF, applies the boot-address write, and triggers hart 0 MSIP
 
 Hardware checklist: connect the intended board/DDR, HDMI display, JTAG and UART-TSI; validate and program the bitstream; allow DDR calibration; load/run the ELF; expect bars → red → green → blue repeatedly. If blank, inspect implementation status, clocks/PLL reset, DDR calibration, UART selfcheck, enable/base/ready/error, and trap/phase globals. Physical testing remains required.
 
-## Validation results
+## Released single-request implementation validation
 
 The final Vivado 2024.2 build completed successfully for xc7k160tiffg676-2L. Routed setup WNS is +0.068 ns (TNS 0); hold WHS is +0.026 ns (THS 0). DRC reports zero errors and 276 warnings (DSP pipelining, slice placement and clock buffering). The synchronizer structural assertion passes: nine discrete ASYNC_REG status FFs, zero SRLs. Both seven-bit FIFO Gray-pointer crossings pass bus-skew checks: actual 1.008 ns against 8 ns, and 0.759 ns against 30 ns.
 
 This is not a clean CDC or complete external-I/O sign-off. report_cdc retains 17 CDC-10 critical combinational-before-synchronizer findings, one CDC-6 warning, one CDC-8 warning and 318 CDC-15 warnings. Reset logic, status decoding and library FIFO protocols still require interpretation/review; no report severity was downgraded. check_timing reports zero unconstrained internal endpoints, but two inputs and seven outputs lack external delay constraints. Timing passes under the supplied constraints, not a measured PCB timing model. HDMI pin electrical pairing was checked against the selected device; physical board wiring, oscillator, DDR calibration and display operation remain unobserved. No board was programmed.
 
-Current bitstream: `fpga/generated-src/chipyard.fpga.boralakeold.BoraLakeHarness.BoraLakeRocketConfig/obj/BoraLakeHarness.bit`. Test ELF: `software/hdmi-test/build/hdmi-test.elf`. Build log: `hdmi-validation/bitstream.log`; timing, DRC, CDC and bus-skew reports are under the bitstream's `obj/report/`. Artifact SHA-256 values are recorded in `hdmi-validation/artifact-manifest.json`. Controller RTL simulation passed bars, pixel ordering, frame wrap, stop/drain/base switch and underflow recovery (`hdmi-validation/scanout-simulation.log`). It stubs the transmitter and does not test DDR calibration, OSERDES, TMDS pins or physical HDMI. Run after generating Verilog:
+Current bitstream: `fpga/generated-src/chipyard.fpga.boralakeold.BoraLakeHarness.BoraLakeRocketConfig/obj/BoraLakeHarness.bit`. Test ELF: `software/hdmi-test/build/hdmi-test.elf`. Build log: `hdmi-validation/bitstream.log`; timing, DRC, CDC and bus-skew reports are under the bitstream's `obj/report/`. Released-artifact SHA-256 values are preserved in `hdmi-validation/artifact-manifest-rc1.json`. Controller RTL simulation passed bars, pixel ordering, frame wrap, stop/drain/base switch and underflow recovery (`hdmi-validation/scanout-simulation.log`). It stubs the transmitter and does not test DDR calibration, OSERDES, TMDS pins or physical HDMI. Run after generating Verilog:
 
 ```
 python tests/hdmi/run.py
@@ -134,3 +134,54 @@ The extended test also covers combined PLL/system reset and explicit restart, us
 The bare-metal ELF compiled with `-Wall -Wextra -Werror`; its only link warning is the intentional machine-mode RAM LOAD segment having RWX permissions. Entry is 0x80000000, small PT_LOAD, and BSS/stack use PT_NULL. A plain Spike run reaches the first absent HDMI MMIO access, traps and exits through tohost as expected (`software-spike-trace.log`); that is a startup/trap-path check, not a passing functional HDMI simulation.
 
 Final patch `hdmi-validation/integration.patch` includes integration source/build files, local shell copies, software test, RTL test and documentation. It excludes logs, input archives, generated HDL/ELF/bitstreams, caches and submodule changes. Changes remain uncommitted. The patch is checked with a temporary clean index at the stated base, leaving the real index untouched. For an independent clone, initialize the base submodules normally, apply the patch, build the environment, set CHIPYARD_ENV_ROOT and run the commands above. Do not copy this worktree's machine-specific dependency symlinks.
+
+
+## DMA profiling baseline (after release, no hardware changes)
+
+`python tests/hdmi/profile/run.py --jobs 4` profiles the emitted scanout RTL with synthetic request latency and response stalls. The 23-workload baseline, raw metrics and reproducibility details are in `tests/hdmi/profile/baseline/` and `tests/hdmi/profile/README.md`; simulation logs and a frozen emitted-RTL archive are under `hdmi-validation/profile-baseline/`. The harness checks coordinate-dependent pixels and DMA address order; the transmitter remains stubbed. No board, release asset, ELF or RTL was changed by profiling.
+
+The one-outstanding baseline displays every pixel at measured first-beat latency 1.42 us (model wait 140 cycles), but at 1.62 us (model wait 160) loses 304774 pixels/frame, leaving 0.291 MB/s useful pixels despite 36.833 MB/s received DMA data. This is a synthetic workload result, not a measurement of actual board DDR latency. The largest passing sampled wait is 140 cycles; it is not a proven maximum. Use the comparison tool with identical clocks, FIFO capacity, workloads, seeds and harness before claiming percentages for any optimization. No optimization improvement is claimed yet.
+
+
+## Pipelined DMA development update (historical, before page-flip build)
+
+The current RTL now supports eight source IDs, complete-burst response reordering and ordered delivery into the existing 64-word pixel FIFO. Eight 64-byte reorder slots add 512 payload bytes. A new four-bit register at +0x18 controls the allocated-burst limit (default 4, effective range 1..8); write it while disabled/idle for controlled measurements. Busy includes held A requests and all allocated slots. Software disable never retracts an offered request: it drains accepted responses and discards them before idle. Existing test ELF/control offsets remain compatible. No board clock, serializer, constraints or reset crossing was changed.
+
+Scala compilation, elaboration and Verilog generation passed (`hdmi-validation/pipeline-verilog.log`). The functional regression and a directed multi-source disable/drain, restart, reset and corrupt-response test passed. The updated profiler ran 140 matched workloads across original and new limits 1/2/4/8, plus two out-of-order response workloads; no incorrect valid pixels were observed. Deliberate underflow cases are reported rather than treated as correct images. The new default limit 4 passed a sampled model wait of 600 cycles versus the original's 140 (+328.6% in the sampled bound). Limit 8 passed 1200 cycles. A periodic 20 us response pause every 50 us reduced missing pixels/frame by 73.67% at limit 4 and 97.47% at limit 8. These synthetic controller-only experiments do not measure actual DDR/coherence latency or physical HDMI.
+
+Matched Vivado 2024.2 controller-only out-of-context synthesis estimated LUTs 2460 → 3467 (+40.93%) and FFs 6189 → 10567 (+70.74%), with no BRAM. These estimates are not the full-board post-route resource/timing report above. The existing local .bit and published v0.1-rc1 release still contain the original controller. **No updated bitstream or new full-board timing/DRC sign-off has been generated for the pipelined RTL.** All changes are local; no optimization push, release update or board programming was performed.
+
+Results, costs, caveats, source hashes, raw metrics and comparison tables: `tests/hdmi/profile/pipeline-results/SUMMARY.md`. Reproduction: `tests/hdmi/profile/README.md`. HDL-only regeneration: `scripts/build-boralake-hdmi.sh verilog`; controller regression: `python tests/hdmi/run.py`; multi-source regression: `python tests/hdmi/profile/directed.py`. The next hardware-build step remains `scripts/build-boralake-hdmi.sh bitstream`, followed by timing/DRC/CDC review before publishing a new candidate.
+
+
+## Continuous timing and page-flip update (November 5)
+
+The pixel clock, 800x525 timing counters and TMDS transmitter now reset only for hardware/PLL reset, rather than software enable changes. Disabled/unprimed scanout emits timed black video and aligns its pixel stream at the next frame boundary. Normal image updates use new frame-tagged, one-pending page flips, preserving prefetched data without resetting the FIFO or transmitter. New registers stage the next base (+0x20), submit/read status (+0x28), count acknowledged visible flips (+0x30), expose acknowledged base (+0x38) and sticky underflow (+0x40). See `tests/hdmi/pageflip/README.md` for protocol and lifecycle requirements.
+
+The same generated-controller benchmark compared the previous pipelined stop/start path with this change: eight image changes caused eight transmitter resets previously and zero now (100% reduction). New ideal, 600-cycle latency and actually out-of-order response workloads each displayed nine full coordinate-checked frames at 59.94945 Hz simulation cadence, with zero missing/wrong pixels, tearing or repeated frames. The out-of-order workload reordered 17284 bursts. Late submissions repeated eight frames, presenting new images at 29.97473/s while video timing stayed 59.94945 Hz without resets/tearing. Existing scanout regression, multi-source directed regression and 23 DMA profiling workloads passed; deliberately overloaded DMA cases still record underflow. These simulations stub the transmitter and do not establish board/display correctness.
+
+New software: `make -C software/hdmi-test pageflip` builds `hdmi-pageflip.elf` (two-second colors with seamless page flips) and `hdmi-flip-stress.elf` (pre-rendered buffers flipped each display frame). Pair these with the new bitstream; v0.1-rc1 does not implement the registers. The original test/hold ELFs remain compatible but do not use the flip API. Fast-test cadence counters have a sequence guard for consistent TSI snapshots; no arbitrary full-frame CPU rendering performance is claimed.
+
+Pageflip metrics and source hashes: `tests/hdmi/pageflip/results/SUMMARY.md`. The full-board build uses `HDMI_INCREMENTAL_DCP=$PWD/hdmi-validation/pre-pageflip/post_route.dcp scripts/build-boralake-hdmi.sh bitstream`, logged in `hdmi-validation/pageflip-bitstream.log`. That reference DCP is the original released single-request implementation used only to reuse matching placement/routes; all new logic is freshly synthesized. The simulation baseline under the same pre-pageflip directory is the later pipelined RTL snapshot, not that DCP's design. Omit the environment variable for a clean implementation. No submodule source/revision or board pin/clock setting was changed.
+
+The first register-storage implementation was stopped during routing after congestion warnings; placed timing was WNS -1.102 ns / TNS -376.629 ns, with a long peripheral-bus write-enable path among the critical paths. This was not final routed sign-off. Logs, source and checkpoints are under hdmi-validation/pageflip-attempt1. The next iteration registers the MMIO input (concurrency 1) and uses a dual-port SyncReadMem plus a two-entry credit-controlled retirement queue instead of the 4096-FF reorder array. Fresh metrics and implementation checks are pending for this iteration. No new GitHub release or board programming has been performed for this change.
+
+
+## Final page-flip candidate validation
+
+The clean full-board build completed successfully with Vivado 2024.2 for xc7k160tiffg676-2L. Setup WNS +0.003 ns / TNS 0; hold WHS +0.048 ns / THS 0; pulse width slack +0.264 ns. Setup margin is only 3 ps. Routed design: 50880 LUTs, 35334 FFs, 17 RAMB36, 96 RAMB18, 25 DSPs; scanout: 2357 LUTs, 6871 FFs, one RAMB36. There are zero unconstrained internal endpoints; 2 inputs and 7 outputs still lack external delay constraints.
+
+Expanded DRC: 288 warnings, zero errors, including 21 REQP-1839 warnings on the scanout RAM. CDC retains 17 critical CDC-10 findings; this is not clean CDC sign-off. All 15 status synchronizer FFs and both Gray-bus skew checks passed (0.563 ns against 8 ns; 0.573 ns against 30 ns). See RESET-REVIEW.md. No new board programming or GitHub release update has been performed. Output: fpga/generated-src/chipyard.fpga.boralakeold.BoraLakeHarness.BoraLakeRocketConfig/obj/BoraLakeHarness.bit. Build log: hdmi-validation/pageflip-bram-bitstream.log.
+
+Build command: `env -u HDMI_INCREMENTAL_DCP scripts/build-boralake-hdmi.sh bitstream`. This clean build supersedes the stopped incremental attempt described above. Final functional, protocol, reordered-response and 23-workload profiling runs passed; deliberate overload still underflows. Detailed metrics: `tests/hdmi/pageflip/results/SUMMARY.md`.
+
+`make -C software/hdmi-test animated` builds `build/hdmi-animated-demo.elf`: bouncing/blinking smiley, checker background and presentation counter. A native mocked-framebuffer test checked 500 frames against full redraws (`python tests/hdmi/pageflip/test_animation.py`); physical rendering FPS remains unmeasured. Page-flip and pre-rendered flip-stress ELFs are also built.
+
+Video conversion is not implemented. Recommended next step is an offline converter plus reusable player, initially limited to short low-resolution clips. Raw 640x480 BGR565 requires 614400 bytes/frame; at 921600 baud 8N1 a single frame takes at least 6.67 seconds to upload, before TSI overhead. A 2-second 160x120 clip at 15 fps is 1.152 MB (at least 12.5 seconds), and can be expanded into inactive 640x480 buffers. CPU expansion performance must be measured.
+
+
+## v0.2-rc1 procedural stress release
+
+Release source includes independent fixed-point ASCII 3D donut, full-frame plasma, neon perspective tunnel, smiley and pre-rendered flip stress tests. `make -C software/hdmi-test demos hold` builds the suite. Donut/plasma/tunnel and hdmi-flip-stress-8 explicitly set the DMA limit to eight while disabled; hardware supports eight slots with reset default four. No hardware changes were made after the passing November 5 implementation. Host-native painter tests validate bounds, animation, pixels and buffer ownership; they do not establish Rocket rendering FPS or physical HDMI. Read `software/hdmi-test/RELEASE.md` for commands and warnings. All target approximately 60 presentations/s without a claim of measured hardware FPS.
+
+`python scripts/export-hdmi-integration.py` exports the clean-base patch. `python scripts/package-boralake-hdmi-release.py` packages the matched bitstream/ELFs, reports, metrics, source patch and SHA256SUMS under hdmi-validation/release/boralake-hdmi-v0.2-rc1. Publication is to The-Ansh-Shah/bringup-chipyard only; the original upstream repository and v0.1-rc1 assets remain unchanged. No board programming was performed.

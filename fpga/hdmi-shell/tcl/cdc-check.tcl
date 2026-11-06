@@ -1,12 +1,12 @@
-# Status CDC must remain nine discrete ASYNC_REG flip-flops, not SRLs.
+# Status CDC must remain fifteen discrete ASYNC_REG flip-flops, not SRLs.
 set statusFFs [get_cells -hier -filter {NAME =~ *scanout/*_sync/stages_reg* && IS_SEQUENTIAL == 1}]
-if {[llength $statusFFs] != 9} { error "Expected nine status synchronizer FFs: $statusFFs" }
+if {[llength $statusFFs] != 15} { error "Expected fifteen status synchronizer FFs: $statusFFs" }
 foreach ff $statusFFs {
  if {[get_property ASYNC_REG $ff] ni {1 true TRUE}} { error "Missing ASYNC_REG on $ff" }
 }
 set statusSRLs [get_cells -hier -filter {NAME =~ *scanout/*_sync/* && REF_NAME =~ SRL*}]
 if {[llength $statusSRLs]} { error "Status synchronizer inferred SRL: $statusSRLs" }
-puts "HDMI_CDC status: nine discrete ASYNC_REG FFs, zero SRLs"
+puts "HDMI_CDC status: fifteen discrete ASYNC_REG FFs, zero SRLs"
 # Analyze the implemented Gray-pointer crossings independently of async clock groups.
 # Fast source toggles at 100 MHz (10 ns); slow source at ~25.179 MHz (~39.72 ns).
 foreach {srcPattern dstPattern bound label} {

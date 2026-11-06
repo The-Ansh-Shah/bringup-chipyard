@@ -1,0 +1,40 @@
+{
+  "legacy": true,
+  "pixel_half_period_ns": 19.858,
+  "system_hz": 100000000,
+  "testbench_sha256": "9a1cd26a3d7a0bdc956f067a4928918fa3518718f5ec0a80a8e634d908e9f444",
+  "rtl_sha256": {
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/AsyncQueue.sv": "43b6a92b3ad1a1ad37028f52adfb5e0b668cb61c17a286635e0b5369de1b27b4",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/AsyncQueueSink_ScanoutWord.sv": "b08fe88e8abd9e4146753fbc465f263ca13e9ee454a05b211dc5cbf9ef378e9b",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/AsyncQueueSource_ScanoutWord.sv": "fc715d418e301da33612adf817b018600ac0cc0dc06631aef4d97dc41d3e913a",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/AsyncResetSynchronizerPrimitiveShiftReg_d3_i0.sv": "9f65e85d06b3cbea8c2437811011de656f6a3f4a4d8242767304b3ae6152088f",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/AsyncResetSynchronizerShiftReg_w1_d3_i0.sv": "1fde3ecd872c4d794396d3d55d7bf6bd28d2c0a164b4561b60b5ad7220911b10",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/AsyncResetSynchronizerShiftReg_w1_d3_i0_4.sv": "98ba2a685a67968c079b808b41da92d8e14c1e5bf5294a380e5f3d25d49c7571",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/AsyncResetSynchronizerShiftReg_w7_d3_i0.sv": "e8a65185ee361134a308ae6fa424b0ce82e9806e458c3adc847601bcfca80773",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/AsyncValidSync.sv": "fae329eceb637233b5b5a025c0ae9bf9b75414f91b17275167109ce9cf31e086",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/ClockCrossingReg_w89.sv": "eaf827b3bdda5348161a6189e870d8e64e8b0b14c345ee3a0f7c752a263a6d5d",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/ClockSinkDomain_2.sv": "7a962c8da4811f4deb6f4934d6eed6a870285b709f6fca5067a2aab388005e36",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/ResetCatchAndSync_d3.sv": "297e128a3714ac4edd99b1a0afe45b7d74d562467619228f3c5d9930cb156d6f",
+    "/bwrcq/C/ansh_shah/ee194-lab1-hdmi/hdmi-validation/pre-pageflip/gen-collateral/VideoStatusSynchronizer.v": "490bf2ef402e4340b1978531c9507348ed36211ec7430d5319e0c5e414049221"
+  },
+  "cases": [
+    {
+      "flips": 8,
+      "started_frames": 9,
+      "completed_frames": 9,
+      "tx_resets": 8,
+      "missing_pixels": 0,
+      "good_pixels": 2764800,
+      "repeated_frames": 0,
+      "min_frame_pixel_cycles": 412016,
+      "max_frame_pixel_cycles": 412017,
+      "first_ack_cycle": 1748376,
+      "last_ack_cycle": 13202923,
+      "reordered_bursts": 0,
+      "name": "ideal",
+      "latency": 0,
+      "acknowledged_updates_per_second": 61.11110286596231,
+      "frame_rate_hz": 61.110996055401806
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "luts": 2476,
+  "logic_luts": 2393,
+  "lutram": 44,
+  "srl": 39,
+  "ffs": 6902,
+  "ramb36": 1,
+  "ramb18": 0,
+  "dsp": 0,
+  "reference_original": {
+    "luts": 2460,
+    "ffs": 6189,
+    "ramb36": 0,
+    "ramb18": 0
+  },
+  "reference_pipelined_register_array": {
+    "luts": 3467,
+    "ffs": 10567,
+    "ramb36": 0,
+    "ramb18": 0
+  },
+  "method": "Matched Vivado 2024.2 controller-only out-of-context synthesis; no external board timing constraints. Not routed whole-board sign-off."
+}

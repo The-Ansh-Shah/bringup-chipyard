@@ -1,0 +1,59 @@
+{
+  "part": "xc7k160tiffg676-2L",
+  "vivado": "2024.2",
+  "base_commit": "748fb8636d36f583c811e2107b32baba7ef94ffa",
+  "changes_uncommitted": true,
+  "build_command": "env -u HDMI_INCREMENTAL_DCP scripts/build-boralake-hdmi.sh bitstream",
+  "source_sha256": {
+    "generators/barduino-blocks/src/main/scala/VideoController/VideoController.scala": "5ee880a922447b3a01e3e221a7cc8354eb3b16be8df42e265962174d37f8749c",
+    "fpga/src/main/scala/BoraLakeOld/Configs.scala": "2bcf9c11d1b7baebc61bd4f7258a3ba1683c87365ef9ba2932938a826698f822",
+    "fpga/src/main/scala/BoraLakeOld/HarnessBinders.scala": "21845f09301d96b8bcfacb8722127e3a3394df4b7dc6687707cd75130799a8b9",
+    "fpga/src/main/scala/BoraLakeOld/Harness.scala": "7b7905bdf0aa2a9c3283f1e9c5de8d5a3653db3b0a15ef3fef8c1014d2728fc2",
+    "fpga/hdmi-shell/src/main/scala/BoraLakeDDRShell.scala": "a36701d635059eee2888ddd5008ee043de4ceb665e78a5ad755456629e9743a9",
+    "fpga/hdmi-shell/src/main/scala/BoraLakeShell.scala": "0cda8c34f0f4ad8b119ed70210a29a1c12e8b65dbf67ffe6df6603ca55cc4b5c",
+    "fpga/hdmi-shell/tcl/vivado.tcl": "50fa41b8a625d8c260a6dea1fe1162d1055b6310a457f5066404fb25af505c8e",
+    "fpga/hdmi-shell/tcl/cdc-check.tcl": "82ea5ab27e3a8a50379847666cc68b749837c2af77d17261c5f0e711561a69c1",
+    "software/hdmi-test/main.c": "08868e02316ec54cc5418d35e66999ea23c8e5f59028f4e54b6530e08b2ae990",
+    "software/hdmi-test/flip-stress.c": "2cd93b09fc2a7ae07f1ae2f82157d5e3f0d5bad4f8b0b2b15a0c83a3fdacd0da",
+    "software/hdmi-test/start.S": "d10ef939cba2e64a768789d4044c720bc76ba989ecbbea2458db93e057ce0244",
+    "software/hdmi-test/link.ld": "01e202aa9381c90de22a251db29f0276eebe2a2c99107bd23d89c7dc019aefe7",
+    "software/hdmi-test/Makefile": "c89e05d146de84866b5eef8d5b088f36ae8a178748eb6a28bdb26c26c76f8fce",
+    "software/hdmi-test/animated-demo.c": "6e3892d25d6b0e702cd788543ace95c92c0a864ad61fbe21795834438bd7fe03",
+    "software/hdmi-test/read-flip-stats.py": "05d96559b747f0fee3a5357b9178d8f84d52749d5ae1ff1fd57c58a6fec782f6"
+  },
+  "status": "bitstream generated; timing passed under supplied constraints; warning-bearing candidate, physical validation pending",
+  "controller_synthesis_area": {
+    "luts": 2476,
+    "logic_luts": 2393,
+    "lutram": 44,
+    "srl": 39,
+    "ffs": 6902,
+    "ramb36": 1,
+    "ramb18": 0,
+    "dsp": 0,
+    "reference_original": {
+      "luts": 2460,
+      "ffs": 6189,
+      "ramb36": 0,
+      "ramb18": 0
+    },
+    "reference_pipelined_register_array": {
+      "luts": 3467,
+      "ffs": 10567,
+      "ramb36": 0,
+      "ramb18": 0
+    },
+    "method": "Matched Vivado 2024.2 controller-only out-of-context synthesis; no external board timing constraints. Not routed whole-board sign-off."
+  },
+  "implementation": {
+    "setup_wns_ns": 0.003,
+    "setup_tns_ns": 0,
+    "hold_whs_ns": 0.048,
+    "hold_ths_ns": 0,
+    "drc_errors": 0,
+    "drc_warnings": 288,
+    "reqp_1839": 21,
+    "cdc_10_critical": 17,
+    "physical_hdmi_verified": false
+  }
+}

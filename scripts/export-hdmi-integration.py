@@ -13,6 +13,7 @@ files = [
     'hdmi-validation/.gitignore',
     'scripts/build-boralake-hdmi.sh', 'scripts/program-boralake-hdmi.tcl',
     'scripts/export-hdmi-integration.py', 'scripts/check-boralake-cdc.tcl',
+    'scripts/audit-boralake-drc.tcl', 'scripts/package-boralake-hdmi-release.py',
     'generators/barduino-blocks/build.sbt',
     'generators/chipyard/src/main/scala/DigitalTop.scala',
     'generators/chipyard/src/main/scala/config/RocketConfigs.scala',
@@ -26,7 +27,7 @@ for directory in ['fpga/src/main/scala/BoraLakeOld', 'fpga/hdmi-shell',
         rel = path.relative_to(root)
         if not path.is_file() or any(x in rel.parts for x in ['build', 'target', '__pycache__']):
             continue
-        if path.suffix in ['.scala', '.v', '.sv', '.tcl', '.md', '.c', '.S', '.ld', '.py'] or path.name in ['Makefile', '.gitignore']:
+        if path.suffix in ['.scala', '.v', '.sv', '.tcl', '.md', '.c', '.S', '.ld', '.py', '.json', '.csv'] or path.name in ['Makefile', '.gitignore']:
             files.append(str(rel))
 files = sorted(set(files))
 out = root/'hdmi-validation'
@@ -39,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix='hdmi-export-') as temp:
     git('read-tree', base)
     git('add', '--', *files)
     with patch.open('wb') as stream:
-        git('diff', '--cached', '--binary', '--full-index', stdout=stream)
+        git('diff', '--cached', '--binary', '--full-index', base, '--', *files, stdout=stream)
     git('read-tree', base)
     git('apply', '--cached', '--check', str(patch))
     git('apply', '--cached', str(patch))
